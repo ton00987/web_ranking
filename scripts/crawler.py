@@ -1,65 +1,39 @@
 from search.models import Word, Website, WordWebsite
 import requests
 from bs4 import BeautifulSoup
-import re
-from collections import Counter
+from urllib.parse import urljoin
 
-class NameDuplicate(Exception):
-  def __init__(self, name):
-    self.name = name
+url = "https://rottenpotatoesvxx.herokuapp.com/"
+base = urljoin(url, '/')
+database = []
 
-url = "https://www.wikipedia.org/"
-data = requests.get(url)
-soup = BeautifulSoup(data.content, 'html.parser')
+def crawl(url):
+    ''' Webpage Crawling '''
+    print("Crawling at: ", url)
+    data = requests.get(url)
 
-# Delete javascript tag and css tag
-for script in soup(["script", "style"]):
-  script.decompose()
+    # Check HTML status
+    if data.status_code != 200:
+        return
 
-# Get text and clean it
-text = soup.get_text(" ", strip=True)
-text = re.sub('[^a-z]+', ' ', text.lower())
-text = text.split()
+    html = BeautifulSoup(data.content, 'html.parser')
+    get_text(html)
 
-# Add website
-try:
-  if Website.objects.filter(url__exact=url):
-    web = Website.objects.filter(url__exact=url)[0]
-    raise NameDuplicate(url)
+    a_tag = html.find_all('a')
+    for a in a_tag:
+        new_url = urljoin(url, a.get('href'))
+        if new_url in database:
+            continue
+        elif base in new_url:
+            database.append(new_url)
+            crawl(new_url)
 
-  else:
-    web = Website(title=soup.title.string, url=url)
-    web.save()
 
-except NameDuplicate as n:
-  print('NameDuplicate: There is an existing ' + n.name + ' url')
+def get_text(html):
+    ''' Remove CSS and Javascript tag and get text from HTML. '''
+    for script in html(["script", "style"]):
+        script.decompose()
+    text = html.get_text(" ", strip=True).split()
+    print(text)
 
-# Count each words
-counts = Counter(text)
-
-# Add word and number word
-for i, j in counts.items():
-  try:
-    if Word.objects.filter(word__exact=i):
-      wd = Word.objects.filter(word__exact=i)[0]
-      raise NameDuplicate(i)
-
-    else:
-      wd = Word(word=i)
-      wd.save()
-
-  except NameDuplicate as n:
-    print('NameDuplicate: There is an existing ' + n.name + ' word')
-
-  try:
-    if WordWebsite.objects.filter(word_id=wd.id, website_id=web.id):
-      raise NameDuplicate('')
-
-    else:
-      ww = WordWebsite(word=wd, website=web, count=j)
-      ww.save()
-
-  except NameDuplicate as n:
-    print('NameDuplicate: There is an existing ' + n.name + 'object')
-
-print('Success')
+crawl(url)
