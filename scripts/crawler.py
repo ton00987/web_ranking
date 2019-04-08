@@ -1,14 +1,17 @@
 from search.models import Word, Website, WordWebsite
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
-url = "https://rottenpotatoesvxx.herokuapp.com/"
-base = urljoin(url, '/')
+url = "https://www.bbc.com/news"
+hostname = urlparse(url).hostname
 database = []
 
-def crawl(url):
+def crawl(url, depth=3):
     ''' Webpage Crawling '''
+    if depth == -1:
+        return
+
     print("Crawling at: ", url)
     data = requests.get(url)
 
@@ -24,9 +27,11 @@ def crawl(url):
         new_url = urljoin(url, a.get('href'))
         if new_url in database:
             continue
-        elif base in new_url:
+        elif not new_url.startswith("http"):
+            continue
+        elif hostname in new_url:
             database.append(new_url)
-            crawl(new_url)
+            crawl(new_url, depth - 1)
 
 
 def get_text(html):
