@@ -10,6 +10,7 @@ class Website(models.Model):
     url = models.CharField(max_length=10000)
     root = models.ForeignKey('self', default=None, on_delete=models.CASCADE, null=True)
     word = models.ManyToManyField(Word, through='WordWebsite')
+    click = models.IntegerField(default=0)
 
 class WordWebsite(models.Model):
     word = models.ForeignKey(Word, on_delete=models.CASCADE)

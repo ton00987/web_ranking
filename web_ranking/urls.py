@@ -19,4 +19,5 @@ from search import views
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('click', views.click, name='click'),
 ]

@@ -8,13 +8,14 @@
             <input type="text" name="search" placeholder="Enter word to find">
             <input type="submit" value="Search">
         </form>
-    <table>
-        {% for web in webs %}
-        <tr>
-            <td>{{ web.website.title}}. </td>
-            <td><a href="{{ web.website.url }}">{{ web.website.url }}</a></td>
-        </tr>
+        <br>
+        {% for web in sort_webs %}
+            <form method="POST" action='/click'>
+                {{ web.website.title }}<br>
+                <input type="submit" value="{{ web.website.url }}" name="url">
+                {% csrf_token %}
+            </form>
+            <br>
         {% endfor %}
-    </table>
     </body>
 </html>
