@@ -3,63 +3,61 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from collections import Counter
+from scripts import crawler
 
 class NameDuplicate(Exception):
-  def __init__(self, name):
-    self.name = name
+    def __init__(self, name):
+        self.name = name
 
-url = "https://www.wikipedia.org/"
-data = requests.get(url)
-soup = BeautifulSoup(data.content, 'html.parser')
+def insert_db(html, url, text, old_url):
+    # Add website
+    try:
+        if Website.objects.filter(url__exact=url):
+            web = Website.objects.filter(url__exact=url)[0]
+            raise NameDuplicate(url)
 
-# Delete javascript tag and css tag
-for script in soup(["script", "style"]):
-  script.decompose()
+        else:
+            try:
+                old_web = Website.objects.filter(url=old_url)[0]
+            except:
+                old_web = None
 
-# Get text and clean it
-text = soup.get_text(" ", strip=True)
-text = re.sub('[^a-z]+', ' ', text.lower())
-text = text.split()
+            if html.title.string != None:
+                web = Website(title=html.title.string, url=url, root=old_web)
+                web.save()
+            else:
+                return
 
-# Add website
-try:
-  if Website.objects.filter(url__exact=url):
-    web = Website.objects.filter(url__exact=url)[0]
-    raise NameDuplicate(url)
+    except NameDuplicate as n:
+        print('NameDuplicate: There is an existing ' + n.name + ' url')
 
-  else:
-    web = Website(title=soup.title.string, url=url)
-    web.save()
+    # Count each words
+    counts = Counter(text)
 
-except NameDuplicate as n:
-  print('NameDuplicate: There is an existing ' + n.name + ' url')
+    # Add word and number word
+    for i, j in counts.items():
+        try:
+            if Word.objects.filter(word__exact=i):
+                wd = Word.objects.filter(word__exact=i)[0]
+                raise NameDuplicate(i)
 
-# Count each words
-counts = Counter(text)
+            else:
+                wd = Word(word=i)
+                wd.save()
+                print('Add', i)
 
-# Add word and number word
-for i, j in counts.items():
-  try:
-    if Word.objects.filter(word__exact=i):
-      wd = Word.objects.filter(word__exact=i)[0]
-      raise NameDuplicate(i)
+        except NameDuplicate as n:
+            print('NameDuplicate: There is an existing ' + n.name + ' word')
 
-    else:
-      wd = Word(word=i)
-      wd.save()
+        try:
+            if WordWebsite.objects.filter(word_id=wd.id, website_id=web.id):
+                raise NameDuplicate('')
 
-  except NameDuplicate as n:
-    print('NameDuplicate: There is an existing ' + n.name + ' word')
+            else:
+                ww = WordWebsite(word=wd, website=web, count=j)
+                ww.save()
 
-  try:
-    if WordWebsite.objects.filter(word_id=wd.id, website_id=web.id):
-      raise NameDuplicate('')
+        except NameDuplicate as n:
+            print('NameDuplicate: There is an existing ' + n.name + 'object')
 
-    else:
-      ww = WordWebsite(word=wd, website=web, count=j)
-      ww.save()
-
-  except NameDuplicate as n:
-    print('NameDuplicate: There is an existing ' + n.name + 'object')
-
-print('Success')
+    print('Success')
