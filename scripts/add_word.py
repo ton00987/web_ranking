@@ -22,10 +22,13 @@ def insert_db(html, url, text, old_url):
             except:
                 old_web = None
 
-            if html.title.string != None:
-                web = Website(title=html.title.string, url=url, root=old_web)
-                web.save()
-            else:
+            try:
+                if html.title.string != None:
+                    web = Website(title=html.title.string, url=url, root=old_web)
+                    web.save()
+                else:
+                    return
+            except:
                 return
 
     except NameDuplicate as n:
@@ -61,3 +64,4 @@ def insert_db(html, url, text, old_url):
             print('NameDuplicate: There is an existing ' + n.name + 'object')
 
     print('Success')
+    
