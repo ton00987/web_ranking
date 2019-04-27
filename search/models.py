@@ -7,9 +7,10 @@ class Word(models.Model):
 class Website(models.Model):
     title = models.CharField(max_length=100)
     url = models.CharField(max_length=10000)
+    date = models.DateField(default='2000-01-01')
+    click = models.IntegerField(default=0)
     ref = models.ManyToManyField('self', default=None, null=True, symmetrical=False, db_index=True)
     word = models.ManyToManyField(Word, through='Have')
-    click = models.IntegerField(default=0)
 
 class Have(models.Model):
     word = models.ForeignKey(Word, on_delete=models.CASCADE)

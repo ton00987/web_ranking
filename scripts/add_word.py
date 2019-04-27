@@ -1,67 +1,78 @@
-from search.models import Word, Website, WordWebsite
+from search.models import *
 import requests
 from bs4 import BeautifulSoup
 import re
 from collections import Counter
 from scripts import crawler
+from datetime import date
 
-class NameDuplicate(Exception):
-    def __init__(self, name):
-        self.name = name
 
-def insert_db(html, url, text, old_url):
-    # Add website
-    try:
-        if Website.objects.filter(url__exact=url):
-            web = Website.objects.filter(url__exact=url)[0]
-            raise NameDuplicate(url)
+def remove_script(html):
+    ''' Remove CSS and Javascript tag. '''
+    for script in html(["script", "style"]):
+        script.decompose()
+    return html
 
-        else:
-            try:
-                old_web = Website.objects.filter(url=old_url)[0]
-            except:
-                old_web = None
 
-            try:
-                if html.title.string != None:
-                    web = Website(title=html.title.string, url=url, root=old_web)
-                    web.save()
-                else:
-                    return
-            except:
-                return
+def get_title(html):
+    ''' Get title from HTML. '''
+    title = html.title.string
+    return title
 
-    except NameDuplicate as n:
-        print('NameDuplicate: There is an existing ' + n.name + ' url')
 
-    # Count each words
-    counts = Counter(text)
+def get_words(html):
+    ''' Get words from HTML. '''
+    words = html.get_text(" ", strip=True)
+    words = re.sub('[^a-z]+', ' ', words.lower())
+    words = words.split()
+    return words
 
-    # Add word and number word
-    for i, j in counts.items():
-        try:
-            if Word.objects.filter(word__exact=i):
-                wd = Word.objects.filter(word__exact=i)[0]
-                raise NameDuplicate(i)
 
-            else:
-                wd = Word(word=i)
-                wd.save()
-                print('Add', i)
+def add_website(title, url):
+    ''' Add or update website to database. '''
+    web_obj, created = Website.objects.update_or_create(
+        title=title, url=url,
+        defaults={'title':title, 'date':date.today()}
+    )
+    show(created, url, ' url')
+    return web_obj
 
-        except NameDuplicate as n:
-            print('NameDuplicate: There is an existing ' + n.name + ' word')
 
-        try:
-            if WordWebsite.objects.filter(word_id=wd.id, website_id=web.id):
-                raise NameDuplicate('')
+def add_word(word):
+    ''' Add or get word to database. '''
+    word_obj, created = Word.objects.get_or_create(word=word)
+    show(created, word, ' word')
+    return word_obj
 
-            else:
-                ww = WordWebsite(word=wd, website=web, count=j)
-                ww.save()
 
-        except NameDuplicate as n:
-            print('NameDuplicate: There is an existing ' + n.name + 'object')
+def add_have(word, website, count):
+    ''' Add many to many relationship
+    between word and website to database. '''
+    created = Have.objects.get_or_create(
+        word=word, website=website,
+        defaults={'count':count}
+    )[1]
+    obj_name = word.word + ' and ' + website.url
+    show(created, obj_name, ' relationship')
 
-    print('Success')
-    
+
+def insert_db(html, url):
+    html = remove_script(html)
+    title = get_title(html)
+    words = get_words(html)
+
+    web_obj = add_website(title, url)
+
+    # Count each word
+    counts = Counter(words)
+
+    for word, num in counts.items():
+        word_obj = add_word(word)
+        add_have(word_obj, web_obj, num)
+
+
+def show(status, obj_name, type_obj):
+    if status:
+        print('Add ' + obj_name + type_obj)
+    else:
+        print('There is an existing ' + obj_name + type_obj)
