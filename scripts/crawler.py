@@ -5,14 +5,13 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from collections import Counter
 from scripts import add_word
-
-
+import datetime
 def crawl(url, domain, depth=0):
     ''' Webpage Crawling '''
 
     # End of crawling
     if depth == -1:
-        return ("Finish crawling!")
+        return
 
     # Crawling start
     print("Crawling at: ", url)
@@ -20,11 +19,12 @@ def crawl(url, domain, depth=0):
 
     # HTML status checking
     if data.status_code != 200:
-        return ("HTML status is not 200")
+        return
 
     # Skip existing URL
-    if Website.objects.filter(url=url):
-        return ("There is an existing url")
+    web = Website.objects.filter(url=url)
+    if web and (datetime.date.today() - web[0].date) <  datetime.timedelta(7, 0, 0):
+        return
 
     # Get HTML
     html = BeautifulSoup(data.content, "html.parser")
