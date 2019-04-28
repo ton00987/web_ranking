@@ -1,4 +1,5 @@
 from search.models import Website
+from django.db import transaction
 import requests
 import tldextract
 from bs4 import BeautifulSoup
@@ -7,6 +8,7 @@ from collections import Counter
 from scripts import add_word
 import datetime
 
+@transaction.atomic
 def crawl(url, domain, depth=0):
     ''' Webpage Crawling '''
 
@@ -14,14 +16,14 @@ def crawl(url, domain, depth=0):
     if depth == -1:
         return
 
-    # Skip existing URL
+    # Skip existing URL that haven't crawl for a long time
     web = Website.objects.filter(url=url)
     if web and (datetime.date.today() - web[0].date) <  datetime.timedelta(7, 0, 0):
         return
 
     # Crawling start
     print("Crawling at: ", url)
-    data = requests.get(url, allow_redirects=False)
+    data = requests.get(url, allow_redirects=False, verify=False)
 
     # HTML status checking
     if data.status_code != 200:
@@ -54,9 +56,13 @@ def crawl(url, domain, depth=0):
             add_word.add_ref(url, next_url)
 
 
+start = datetime.datetime.now()
 file = open("scripts/url_list.txt", "r")
 for line in file:
     url = line.replace("\n", "")
     tld = tldextract.extract(url)
     domain = tld.domain + "." + tld.suffix
-    crawl(url, domain)
+    crawl(url, domain, 1)
+stop = datetime.datetime.now()
+timedelta = stop - start
+print("Finish! in ", timedelta)
