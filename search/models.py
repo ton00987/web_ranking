@@ -5,7 +5,7 @@ class Word(models.Model):
     word = models.CharField(max_length=50, default=None, db_index=True)
 
 class Website(models.Model):
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=100, null=True)
     url = models.CharField(max_length=10000)
     date = models.DateField(default='2000-01-01')
     click = models.IntegerField(default=0)

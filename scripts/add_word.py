@@ -31,7 +31,7 @@ def get_words(html):
 def add_website(title, url):
     ''' Add or update website to database. '''
     web_obj, created = Website.objects.update_or_create(
-        title=title, url=url,
+        url=url,
         defaults={'title':title, 'date':date.today()}
     )
     show(created, url, ' url')
@@ -54,6 +54,14 @@ def add_have(word, website, count):
     )[1]
     obj_name = word.word + ' and ' + website.url
     show(created, obj_name, ' relationship')
+
+
+def add_ref(from_web, to_web):
+    ''' Add many to many relationship
+    between website and referenced website to database. '''
+    from_web_obj = add_website(None, from_web)
+    to_web_obj = add_website(None, to_web)
+    from_web_obj.ref.add(to_web_obj)
 
 
 def insert_db(html, url):
