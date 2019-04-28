@@ -16,7 +16,10 @@ def remove_script(html):
 
 def get_title(html):
     ''' Get title from HTML. '''
-    title = html.title.string
+    try:
+        title = html.title.string
+    except AttributeError:
+        title = None
     return title
 
 
@@ -59,7 +62,7 @@ def add_have(word, website, count):
 def add_ref(from_web, to_web):
     ''' Add many to many relationship
     between website and referenced website to database. '''
-    from_web_obj = add_website(None, from_web)
+    from_web_obj = Website.objects.filter(url=from_web)[0]
     to_web_obj = add_website(None, to_web)
     from_web_obj.ref.add(to_web_obj)
 

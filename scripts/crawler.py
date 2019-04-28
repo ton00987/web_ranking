@@ -2,11 +2,40 @@ from search.models import Website
 from django.db import transaction
 import requests
 import tldextract
+import re
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from collections import Counter
 from scripts import add_word
 import datetime
+
+
+def recently_crawled_url(url):
+    ''' Existing url that recently crawl. '''
+    web = Website.objects.filter(url=url)
+    return web and (datetime.date.today() - web[0].date)\
+        < datetime.timedelta(7, 0, 0)
+
+
+def special_char(href):
+    ''' Ignored special characters'''
+    chars = ["#", "mailto:"]
+    for char in chars:
+        if href.startswith(char):
+            return True
+    return False
+
+
+def extension(href):
+    ''' Ignored some extensions if not in list. '''
+    extensions = [".html", ".com", ".org", ".net", ".int", ".edu", ".gov"]
+    if re.search("\.[^.\/]+$", href):
+        for extension in extensions:
+            if href.endswith(extension):
+                return False
+        return True
+    return False
+
 
 @transaction.atomic
 def crawl(url, domain, depth=0):
@@ -16,14 +45,16 @@ def crawl(url, domain, depth=0):
     if depth == -1:
         return
 
-    # Skip existing URL that haven't crawl for a long time
-    web = Website.objects.filter(url=url)
-    if web and (datetime.date.today() - web[0].date) <  datetime.timedelta(7, 0, 0):
+    # Skip existing URL that recently crawl
+    if recently_crawled_url(url):
         return
 
     # Crawling start
     print("Crawling at: ", url)
-    data = requests.get(url, allow_redirects=False, verify=False)
+    try:
+        data = requests.get(url)
+    except:
+        return
 
     # HTML status checking
     if data.status_code != 200:
@@ -38,8 +69,8 @@ def crawl(url, domain, depth=0):
     for a in a_tag:
         href = a.get("href")
 
-        # Skip AJAX
-        if "#" in href:
+        # Skip URL with special characters or some extensions
+        if special_char(href) or extension(href):
             continue
 
         next_url = urljoin(url, href)
